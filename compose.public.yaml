@@ -1,0 +1,30 @@
+services:
+  githubmcp-app-public:
+    build:
+      context: .
+    container_name: githubmcp-app-public
+    env_file:
+      - .env
+    expose:
+      - "3000"
+    restart: unless-stopped
+
+  githubmcp-edge-public:
+    build:
+      context: ./docker/caddy
+    container_name: githubmcp-edge-public
+    env_file:
+      - .env
+    ports:
+      - "8444:8444"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - githubmcp-app-public
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
