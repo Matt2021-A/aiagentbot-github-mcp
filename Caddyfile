@@ -1,0 +1,12 @@
+{
+  email {$ACME_EMAIL}
+}
+
+{$HOSTNAME}:{$PUBLIC_HTTPS_PORT} {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+    resolvers 1.1.1.1
+  }
+
+  reverse_proxy githubmcp-app-public:{$PORT}
+}
