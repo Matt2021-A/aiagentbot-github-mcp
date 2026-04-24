@@ -1,0 +1,10 @@
+services:
+  githubmcp-app-local:
+    build:
+      context: .
+    container_name: githubmcp-app-local
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
