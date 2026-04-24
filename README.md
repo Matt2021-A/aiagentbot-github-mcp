@@ -28,7 +28,6 @@ Published image:
 
 ```text
 iwashuman2021/mcp:github-mcp-latest
-iwashuman2021/mcp:github-mcp-0.1.0
 ```
 
 Verified pull:
