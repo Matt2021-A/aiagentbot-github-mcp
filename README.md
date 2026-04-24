@@ -2,7 +2,7 @@
 
 Provider-neutral GitHub MCP service scaffold for Claude-first remote connector use.
 
-This repo mirrors the Yahoo MCP architecture, but targets GitHub operations instead of mail. The practical goal is simple: let Claude use GitHub through a custom MCP surface with the same basic operator flow ChatGPT already has in this workspace.
+The practical goal is simple: let Claude use GitHub through a custom MCP surface with the same basic operator flow ChatGPT already has.
 
 ## Current status
 
