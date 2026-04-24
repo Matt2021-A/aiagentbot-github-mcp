@@ -4,7 +4,9 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import * as z from 'zod/v4';
 
 import { config } from './config.js';
-import { getRepo } from './github.js';
+import { createGitHubProviderSelector } from './providers/index.js';
+
+const githubProvider = createGitHubProviderSelector();
 
 function buildToolResponse(data) {
   return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }], structuredContent: data };
@@ -23,8 +25,8 @@ function createServer() {
     inputSchema: { repo: z.string() }
   }, async ({ repo }) => {
     try {
-      const data = await getRepo(config.allowedOwner, repo);
-      return buildToolResponse(data);
+      const data = await githubProvider.getRepo(repo);
+      return buildToolResponse({ provider: githubProvider.name, data });
     } catch (e) {
       return buildErrorResponse(e);
     }
@@ -36,7 +38,13 @@ function createServer() {
 export const app = createMcpExpressApp();
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'github-mcp' });
+  res.json({
+    ok: true,
+    service: 'github-mcp',
+    githubMode: config.githubMode,
+    provider: githubProvider.name,
+    actor: config.githubActor
+  });
 });
 
 app.post('/mcp', async (req, res) => {
