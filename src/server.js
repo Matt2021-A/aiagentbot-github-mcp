@@ -99,15 +99,64 @@ function createServer() {
   return server;
 }
 
-export const app = createMcpExpressApp();
+const allowedHosts = [config.hostname, 'localhost', '127.0.0.1', '::1'];
+
+export const app = createMcpExpressApp({
+  host: '0.0.0.0',
+  allowedHosts
+});
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'github-mcp', githubMode: config.githubMode, provider: githubProvider.name, actor: config.githubActor });
+  res.json({
+    ok: true,
+    service: 'github-mcp',
+    githubMode: config.githubMode,
+    provider: githubProvider.name,
+    actor: config.githubActor,
+    hostname: config.hostname,
+    publicHttpsPort: config.publicHttpsPort
+  });
 });
 
 app.post('/mcp', async (req, res) => {
   const server = createServer();
-  const transport = new StreamableHTTPServerTransport({});
-  await server.connect(transport);
-  await transport.handleRequest(req, res, req.body);
+
+  try {
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined
+    });
+
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+
+    res.on('close', () => {
+      transport.close();
+      server.close();
+    });
+  } catch (error) {
+    console.error('[mcp] request failure', error);
+
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32603,
+          message: 'Internal server error'
+        },
+        id: null
+      });
+    }
+  }
+});
+
+app.get('/mcp', (_req, res) => {
+  res.status(405).json({
+    error: 'GET is not enabled in this starter scaffold. Use POST for Streamable HTTP requests.'
+  });
+});
+
+app.delete('/mcp', (_req, res) => {
+  res.status(405).json({
+    error: 'DELETE is not enabled in this starter scaffold.'
+  });
 });
