@@ -1,8 +1,8 @@
 # aiagentbot-github-mcp
 
-Provider-neutral GitHub MCP service scaffold.
+Provider-neutral GitHub MCP service scaffold for Claude-first remote connector use.
 
-This repo now tracks the GitHub MCP as a backend application that is intended to sit behind a shared HTTPS edge on ports 80 and 443, alongside the Yahoo MCP and future services.
+The practical goal is simple: let Claude use GitHub through a custom MCP surface with the same basic operator flow ChatGPT already has. Under the new design, this repo is the backend app that sits behind a shared HTTPS edge on ports 80 and 443, alongside the Yahoo MCP and future services.
 
 ## Current status
 
