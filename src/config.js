@@ -10,8 +10,7 @@ const envSchema = z.object({
   GITHUB_ACTOR: z.string().min(1).default('ClaudeBot-MattR'),
   PORT: z.coerce.number().default(3000),
   HOSTNAME: z.string().min(1),
-  PUBLIC_HTTPS_PORT: z.coerce.number().default(8444),
-  ACME_EMAIL: z.string().email().optional()
+  PUBLIC_HTTPS_PORT: z.coerce.number().default(443)
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -32,6 +31,5 @@ export const config = {
   githubActor: parsed.data.GITHUB_ACTOR,
   port: parsed.data.PORT,
   hostname: parsed.data.HOSTNAME,
-  publicHttpsPort: parsed.data.PUBLIC_HTTPS_PORT,
-  acmeEmail: parsed.data.ACME_EMAIL
+  publicHttpsPort: parsed.data.PUBLIC_HTTPS_PORT
 };
