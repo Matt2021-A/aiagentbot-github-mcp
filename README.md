@@ -42,6 +42,15 @@ In plain English:
 
 The current shared-edge source of truth lives in the `mcp-infra/` directory of the Yahoo MCP repo until a dedicated infra repo exists.
 
+## Auth posture in the shared platform
+
+The shared edge does not force every backend into the same auth style.
+
+- GitHub MCP continues to use token-based GitHub API access
+- Yahoo MCP is now expected to move toward Yahoo developer access and OAuth as its preferred long-term live-auth path
+
+That difference is intentional. The services share one front door, but each backend can keep the auth model that best fits its provider.
+
 ## Tool surface
 
 The scaffold registers these MCP tools:
