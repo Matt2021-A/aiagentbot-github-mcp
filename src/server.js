@@ -13,13 +13,34 @@ function buildToolResponse(data) {
 }
 
 function buildErrorResponse(error) {
-  return { content: [{ type: 'text', text: `Error: ${error.message}` }], isError: true };
+  console.error('[mcp] tool failure', error);
+  return { content: [{ type: 'text', text: 'Error: request failed' }], isError: true };
+}
+
+function requireBearerToken(req, res, next) {
+  if (!config.mcpBearerToken) {
+    res.status(500).json({ error: 'MCP auth is not configured' });
+    return;
+  }
+
+  const actual = req.headers.authorization?.replace(/^Bearer\s+/i, '');
+
+  if (!actual || actual !== config.mcpBearerToken) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  next();
 }
 
 function createServer() {
   const server = new McpServer({ name: 'github-mcp', version: '0.1.0' });
 
-  server.registerTool('get_repo', { title: 'Get Repo', description: 'Fetch repository details', inputSchema: { repo: z.string() } }, async ({ repo }) => {
+  server.registerTool('get_repo', {
+    title: 'Get Repo',
+    description: 'Fetch repository details',
+    inputSchema: { repo: z.string().min(1).max(100) }
+  }, async ({ repo }) => {
     try {
       const data = await githubProvider.getRepo(repo);
       return buildToolResponse({ provider: githubProvider.name, data });
@@ -31,7 +52,10 @@ function createServer() {
   server.registerTool('create_branch', {
     title: 'Create Branch',
     description: 'Create a new branch from default branch',
-    inputSchema: { repo: z.string(), branch: z.string() }
+    inputSchema: {
+      repo: z.string().min(1).max(100),
+      branch: z.string().min(1).max(150).regex(/^aiagentbot\/[A-Za-z0-9._-]+$/)
+    }
   }, async ({ repo, branch }) => {
     try {
       const base = await githubProvider.getDefaultBranch(repo);
@@ -46,11 +70,11 @@ function createServer() {
     title: 'Create or Update File',
     description: 'Create or update file in repo',
     inputSchema: {
-      repo: z.string(),
-      branch: z.string(),
-      path: z.string(),
-      content: z.string(),
-      message: z.string().optional()
+      repo: z.string().min(1).max(100),
+      branch: z.string().min(1).max(150).regex(/^aiagentbot\/[A-Za-z0-9._-]+$/),
+      path: z.string().min(1).max(500),
+      content: z.string().max(100000),
+      message: z.string().max(200).optional()
     }
   }, async ({ repo, branch, path, content, message }) => {
     try {
@@ -65,11 +89,11 @@ function createServer() {
     title: 'Open PR',
     description: 'Open pull request',
     inputSchema: {
-      repo: z.string(),
-      head: z.string(),
-      base: z.string(),
-      title: z.string(),
-      body: z.string().optional()
+      repo: z.string().min(1).max(100),
+      head: z.string().min(1).max(150).regex(/^aiagentbot\/[A-Za-z0-9._-]+$/),
+      base: z.string().min(1).max(150),
+      title: z.string().min(1).max(200),
+      body: z.string().max(10000).optional()
     }
   }, async ({ repo, head, base, title, body }) => {
     try {
@@ -80,21 +104,23 @@ function createServer() {
     }
   });
 
-  server.registerTool('merge_pr', {
-    title: 'Merge PR',
-    description: 'Merge pull request',
-    inputSchema: {
-      repo: z.string(),
-      pullNumber: z.number()
-    }
-  }, async ({ repo, pullNumber }) => {
-    try {
-      const result = await githubProvider.mergePr(repo, pullNumber);
-      return buildToolResponse({ provider: githubProvider.name, result });
-    } catch (e) {
-      return buildErrorResponse(e);
-    }
-  });
+  if (config.enableMergeTool) {
+    server.registerTool('merge_pr', {
+      title: 'Merge PR',
+      description: 'Merge pull request',
+      inputSchema: {
+        repo: z.string().min(1).max(100),
+        pullNumber: z.number().int().positive()
+      }
+    }, async ({ repo, pullNumber }) => {
+      try {
+        const result = await githubProvider.mergePr(repo, pullNumber);
+        return buildToolResponse({ provider: githubProvider.name, result });
+      } catch (e) {
+        return buildErrorResponse(e);
+      }
+    });
+  }
 
   return server;
 }
@@ -112,13 +138,11 @@ app.get('/health', (_req, res) => {
     service: 'github-mcp',
     githubMode: config.githubMode,
     provider: githubProvider.name,
-    actor: config.githubActor,
-    hostname: config.hostname,
-    publicHttpsPort: config.publicHttpsPort
+    mergeToolEnabled: config.enableMergeTool
   });
 });
 
-app.post('/mcp', async (req, res) => {
+app.post('/mcp', requireBearerToken, async (req, res) => {
   const server = createServer();
 
   try {
