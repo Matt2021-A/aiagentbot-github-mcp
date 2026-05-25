@@ -1,12 +1,34 @@
 import { Octokit } from '@octokit/rest';
 import { config } from '../config.js';
 
+const blockedPathPrefixes = ['.github/workflows/', '.env', 'certs/', '.caddy/'];
+
 function createClient() {
   return new Octokit({ auth: config.githubToken });
 }
 
 function cleanRepo(repo) {
   return repo.replace(/^\/+|\/+$/g, '');
+}
+
+function assertRepoAllowed(repo) {
+  const clean = cleanRepo(repo);
+
+  if (!config.allowedRepos.includes(clean)) {
+    throw new Error('Repository is not allowlisted.');
+  }
+
+  return clean;
+}
+
+function assertSafePath(path) {
+  const normalized = path.replace(/^\/+/, '');
+
+  if (normalized.includes('..') || blockedPathPrefixes.some(prefix => normalized.startsWith(prefix))) {
+    throw new Error('Path is not allowed for automated writes.');
+  }
+
+  return normalized;
 }
 
 export function createGitHubProvider() {
@@ -16,9 +38,10 @@ export function createGitHubProvider() {
     name: 'github',
 
     async getRepo(repo) {
+      const safeRepo = assertRepoAllowed(repo);
       const { data } = await octokit.repos.get({
         owner: config.allowedOwner,
-        repo: cleanRepo(repo)
+        repo: safeRepo
       });
 
       return {
@@ -32,10 +55,11 @@ export function createGitHubProvider() {
     },
 
     async getDefaultBranch(repo) {
-      const details = await this.getRepo(repo);
+      const safeRepo = assertRepoAllowed(repo);
+      const details = await this.getRepo(safeRepo);
       const { data } = await octokit.repos.getBranch({
         owner: config.allowedOwner,
-        repo: cleanRepo(repo),
+        repo: safeRepo,
         branch: details.defaultBranch
       });
 
@@ -48,24 +72,27 @@ export function createGitHubProvider() {
     },
 
     async createBranch(repo, branch, baseSha) {
+      const safeRepo = assertRepoAllowed(repo);
       await octokit.git.createRef({
         owner: config.allowedOwner,
-        repo: cleanRepo(repo),
+        repo: safeRepo,
         ref: `refs/heads/${branch}`,
         sha: baseSha
       });
 
-      return { repo: cleanRepo(repo), branch, baseSha };
+      return { repo: safeRepo, branch, baseSha };
     },
 
     async createOrUpdateFile(repo, branch, path, content, message) {
+      const safeRepo = assertRepoAllowed(repo);
+      const safePath = assertSafePath(path);
       let existingSha;
 
       try {
         const { data } = await octokit.repos.getContent({
           owner: config.allowedOwner,
-          repo: cleanRepo(repo),
-          path,
+          repo: safeRepo,
+          path: safePath,
           ref: branch
         });
 
@@ -80,18 +107,18 @@ export function createGitHubProvider() {
 
       const { data } = await octokit.repos.createOrUpdateFileContents({
         owner: config.allowedOwner,
-        repo: cleanRepo(repo),
-        path,
-        message: message || `Update ${path}`,
+        repo: safeRepo,
+        path: safePath,
+        message: message || `Update ${safePath}`,
         content: Buffer.from(content, 'utf8').toString('base64'),
         branch,
         sha: existingSha
       });
 
       return {
-        repo: cleanRepo(repo),
+        repo: safeRepo,
         branch,
-        path,
+        path: safePath,
         commitSha: data.commit.sha,
         contentSha: data.content?.sha,
         action: existingSha ? 'updated' : 'created'
@@ -99,9 +126,10 @@ export function createGitHubProvider() {
     },
 
     async openPr(repo, head, base, title, body) {
+      const safeRepo = assertRepoAllowed(repo);
       const { data } = await octokit.pulls.create({
         owner: config.allowedOwner,
-        repo: cleanRepo(repo),
+        repo: safeRepo,
         head,
         base,
         title,
@@ -119,9 +147,10 @@ export function createGitHubProvider() {
     },
 
     async mergePr(repo, pullNumber) {
+      const safeRepo = assertRepoAllowed(repo);
       const { data } = await octokit.pulls.merge({
         owner: config.allowedOwner,
-        repo: cleanRepo(repo),
+        repo: safeRepo,
         pull_number: pullNumber,
         merge_method: 'squash'
       });
