@@ -1,0 +1,32 @@
+# Dependency and package-manager noise
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment and secret material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+certs/
+.caddy/
+
+# Git and platform metadata not needed in the image build context
+.git
+.gitignore
+.github/
+
+# Test, coverage, and local OS/editor artifacts
+coverage/
+.nyc_output/
+.DS_Store
+.vscode/
+.idea/
+
+# Local compose overrides and transient Docker artifacts
+docker-compose.override.yml
+*.local.yml
