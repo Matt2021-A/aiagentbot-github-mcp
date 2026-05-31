@@ -1,7 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { config } from '../config.js';
 
-const blockedPathPrefixes = ['.github/workflows/', '.env', 'certs/', '.caddy/'];
+const blockedPathPrefixes = ['.github/workflows/', '.env', '.env.', 'certs/', '.caddy/'];
 
 function createClient() {
   return new Octokit({ auth: config.githubToken });
